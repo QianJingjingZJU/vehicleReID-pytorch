@@ -51,6 +51,38 @@ class Mydatsetsoft(Dataset):
                 print("Cannot transform image: {}".format(img))
         return img, img_id
 
+class Mydatsettriplet(Dataset):
+    def __init__(self, img_name, batchsize =32,data_transforms=None, loader = default_loader):
+        self.img_name = img_name
+        self.batchsize =batchsize
+        self.img_a_name = self.img_name[0:self.batchsize:1]
+        self.img_p_name = self.img_name[self.batchsize:2 * self.batchsize:1]
+        self.img_n_name = self.img_name[2 * self.batchsize:3 * self.batchsize:1]
+        self.data_transforms = data_transforms
+        self.loader = loader
+
+    def __len__(self):
+        return len(self.img_a_name)
+
+    def __getitem__(self, item):
+        img_a_name = self.img_a_name[item]
+        img_p_name = self.img_p_name[item]
+        img_n_name = self.img_n_name[item]
+        img_a = self.loader(img_a_name)
+        img_p = self.loader(img_p_name)
+        img_n = self.loader(img_n_name)
+
+        if self.data_transforms is not None:
+            try:
+                img_a = self.data_transforms(img_a)
+                img_p = self.data_transforms(img_p)
+                img_n = self.data_transforms(img_n)
+            except:
+                print("Cannot transform image: {}".format(img_a))
+                print("Cannot transform image: {}".format(img_p))
+                print("Cannot transform image: {}".format(img_n))
+        return img_a, img_p, img_n
+
 def train_model(model, criterion1,criterion2,optimizer, scheduler, num_epochs, use_gpu, batchnumber=50, batchsize=32):
     since = time.time()
     writer = SummaryWriter()

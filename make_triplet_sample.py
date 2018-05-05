@@ -70,7 +70,91 @@ def gettripletsample(imgpath,batchsize=32,imgiddic={},imgsortid={}):
     id = a_id+p_id+n_id
     return img, id
 
-# imgiddic = get_imgiddic('/Users/CarolQian/Documents/bishe/VehicleID_V1.0/train_test_split/test_800.txt')
-# imgsortid = get_img_sortiddic('/Users/CarolQian/Documents/bishe/VehicleID_V1.0/train_test_split/test_800.txt')
-# img,imgid = gettripletsample(imgpath='/Users/CarolQian/Documents/bishe/VehicleID_V1.0/test_800/',
+def deleteless4id(path):
+    imgiddic = get_imgiddic(path)
+    idkey  = list(imgiddic.keys())
+    for i in idkey:
+        if len(imgiddic[i]) < 4:
+            idkey.remove(i)
+    newimgiddic = {}
+    newimgsortid = {}
+    for i in idkey:
+        if imgiddic.__contains__(i):
+            newimgiddic[i] = imgiddic[i]
+    c = 0
+    for i in idkey:
+        idkey[c] = int(i)
+        c +=1
+    idkey = sortid(idkey)
+    count = 0
+    for vid in newimgiddic:
+        for img in newimgiddic[vid]:
+            newimgsortid[img] = idkey[count]
+        count +=1
+
+    return newimgiddic, newimgsortid
+
+
+def gettriphardsample(imgpath,batchsize=32,imgiddic={},imgsortid={}):
+    img = []
+    id = []
+    vehicleid = list(imgiddic.keys())
+
+    for batch in range(batchsize):
+        batchid = vehicleid.copy()
+        anchorid = random.choice(batchid)
+        if len(imgiddic[anchorid]) > 3:
+            ap = random.sample(imgiddic[anchorid],4)
+            for i in range(4):
+                img.append(os.path.join(imgpath, str(ap[i]).__add__('.jpg')))
+                id.append(imgsortid[ap[i]])
+        else:
+            for i in range(4):
+                imgnum = random.choice(imgiddic[anchorid])
+                img.append(os.path.join(imgpath, str(imgnum).__add__('.jpg')))
+                id.append(imgsortid[imgnum])
+
+    return img,id
+
+
+def getquandrasample(imgpath,batchsize=32,imgiddic={}, imgsortid={}):
+    img_name_a = []
+    a_id = []
+    img_name_p = []
+    p_id = []
+    img_name_n1 = []
+    n1_id = []
+    img_name_n2 = []
+    n2_id = []
+    id = list(imgiddic.keys())
+
+    for batch in range(batchsize):
+        batchid = id.copy()
+        anchorid = random.choice(batchid)
+        batchid.remove(anchorid)
+        ap = list(random.sample(imgiddic[anchorid], 2))
+        img_name_a.append(os.path.join(imgpath, str(ap[0]).__add__('.jpg')))
+        a_id.append(imgsortid[ap[0]])
+        img_name_p.append(os.path.join(imgpath, str(ap[1]).__add__('.jpg')))
+        p_id.append(imgsortid[ap[1]])
+        negid1 = random.choice(batchid)
+        negnumber1 = random.choice(imgiddic[negid1])
+        img_name_n1.append(os.path.join(imgpath, str(negnumber1).__add__('.jpg')))
+        n1_id.append(imgsortid[negnumber1])
+        negid2 = random.choice(batchid)
+        negnumber2 = random.choice(imgiddic[negid2])
+        img_name_n2.append(os.path.join(imgpath, str(negnumber2).__add__('.jpg')))
+        n2_id.append(imgsortid[negnumber2])
+
+
+    img = img_name_a + img_name_p + img_name_n1 + img_name_n2
+    id = a_id + p_id + n1_id + n2_id
+    return img, id
+
+
+
+# imgiddic = get_imgiddic('/Users/CarolQian/Documents/bishe/VehicleID_V1.0/train_test_split/test_list_800.txt')
+# imgsortid = get_img_sortiddic('/Users/CarolQian/Documents/bishe/VehicleID_V1.0/train_test_split/test_list_800.txt')
+# img,imgid = gettriphardsample(imgpath='/Users/CarolQian/Documents/bishe/VehicleID_V1.0/test_800/',
 #                              batchsize=32,imgiddic=imgiddic,imgsortid=imgsortid)
+

@@ -138,6 +138,7 @@ def getquandrasample(imgpath,batchsize=32,imgiddic={}, imgsortid={}):
         img_name_p.append(os.path.join(imgpath, str(ap[1]).__add__('.jpg')))
         p_id.append(imgsortid[ap[1]])
         negid1 = random.choice(batchid)
+        batchid.remove(negid1)
         negnumber1 = random.choice(imgiddic[negid1])
         img_name_n1.append(os.path.join(imgpath, str(negnumber1).__add__('.jpg')))
         n1_id.append(imgsortid[negnumber1])

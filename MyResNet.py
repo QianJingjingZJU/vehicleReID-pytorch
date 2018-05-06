@@ -110,6 +110,8 @@ class ResNet(nn.Module):
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
         self.avgpool = nn.AvgPool2d(7)
         if self.if_top:
+            self.bn = nn.BatchNorm1d(2048)
+            self.dropout = nn.Dropout(p=0.5)
             self.fc = nn.Linear(512 * block.expansion, num_classes)
         else:
             pass
@@ -153,13 +155,26 @@ class ResNet(nn.Module):
         x = self.avgpool(x)
         x = x.view(x.size(0), -1)
         if self.if_top:
-            return x, self.fc(x)
+            xdrop = self.bn(x)
+            xdrop = self.dropout(xdrop)
+            return x, self.fc(xdrop)
         else:
             return x
 
 def remove_fc(state_dict):
-    """Remove the fc layer parameters from state_dict."""
     return {key: value for key, value in state_dict.items() if not key.startswith('fc.')}
+
+def remove_fcandbn(state_dict):
+    """Remove the fc layer parameters from state_dict."""
+    #newwts = {key: value for key, value in state_dict.items() if not key.startswith('fc.')}
+    #newwts = {key: value for key, value in newwts.items() if not key.startswith('bn.')}
+    state_dict.pop('bn.weight')
+    state_dict.pop('bn.bias')
+    state_dict.pop('bn.running_mean')
+    state_dict.pop('bn.running_var')
+    state_dict.pop('fc.weight')
+    state_dict.pop('fc.bias')
+    return state_dict
 
 def resnet18(pretrained=False, **kwargs):
     """Constructs a ResNet-18 model.

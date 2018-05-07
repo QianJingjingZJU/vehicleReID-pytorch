@@ -10,7 +10,7 @@ from torchvision import  models, transforms
 import time
 import os
 from torch.utils.data import Dataset
-from MyResNet import resnet50,resnet50_nofc,remove_fc,remove_fcandbn
+from MyResNet import resnet50,resnet50_nofc,resnet50_nofc_pre,remove_fc,remove_fcandbn
 
 from PIL import Image
 import numpy as np
@@ -37,6 +37,7 @@ def normalize(x, axis=-1):
 def maketrihardbatch(feature, label, tri_loss):
     disMatrix = euclidean_dist(feature, feature)
     dp, dn = hard_example_mining(disMatrix, label)
+    embed()
     loss = tri_loss(dp,dn)
     return loss
 
@@ -195,7 +196,8 @@ if __name__ == '__main__':
             transforms.ToTensor(),
             transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
 
-    use_gpu = torch.cuda.is_available()
+    #use_gpu = torch.cuda.is_available()
+    use_gpu = False
 
     batch_size = 32
     batchnumber = 600
@@ -211,7 +213,7 @@ if __name__ == '__main__':
     dataset_sizes =len(image_datasets)'''
 
     # get model and replace the original fc layer with your fc layer
-    model = resnet50_nofc(pretrained=True)
+    model = resnet50_nofc_pre(pretrained=True)
     model_dict = model.state_dict()
     model_ft =resnet50(pretrained=False)
     num_ftrs = model_ft.fc.in_features

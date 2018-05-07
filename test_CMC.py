@@ -69,15 +69,20 @@ def getfeature(imgpath,model,gallery=[], probe=[]):
 
     return gallerydict, probedict
 
-def calacc(gallerydict={}, probedict={},gdict=[],pdict=[],toprank=10):
+def calacc(gallerydict={}, probedict={},gdict=[],pdict=[]):
     total = len(pdict)
-    topright = 0
+    topright1 =0
+    topright5 =0
+    topright10 =0
+    topright20 =0
+    topright30 =0
+    topright40 =0
+    topright50 =0
 
     for i in probedict:
         probeid = pdict[i]
         thegallery = gallerydict.copy()
         for j in thegallery:
-            embed()
             thegallery[j] = np.linalg.norm(pre.normalize(probedict[i])-pre.normalize(thegallery[j]))
         sortgallery = sorted(thegallery.items(), key=lambda x: x[1])
         sortimgnum = []
@@ -87,14 +92,35 @@ def calacc(gallerydict={}, probedict={},gdict=[],pdict=[],toprank=10):
         for num in sortimgnum:
             sortimgnum[count] = gdict[num]
             count = count+1
-        for rank in range(toprank):
-            if sortimgnum[rank] == probeid:
-                topright = topright+1
-                break
-        #print(topright)
-    accuracy = topright/total
+        # for rank in range(toprank):
+        #     if sortimgnum[rank] == probeid:
+        #         topright = topright+1
+        #         break
+        key = sortimgnum.index(probeid)
+        if key ==0:
+            topright1 +=1
+        if 0< key <5:
+            topright5 +=1
+        if 4< key <10:
+            topright10 +=1
+        if 9< key <20:
+            topright20 +=1
+        if 19< key <30:
+            topright30 +=1
+        if 29< key <40:
+            topright40 +=1
+        if 39< key <50:
+            topright50 +=1
 
-    return accuracy
+    accuracy1 = topright1/total
+    accuracy5 = (topright1+topright5) / total
+    accuracy10 = (topright1+topright5+topright10) / total
+    accuracy20 = (topright1+topright5+topright10+topright20) / total
+    accuracy30 = (topright1+topright5+topright10+topright20+topright30) / total
+    accuracy40 = (topright1+topright5+topright10+topright20+topright30+topright40) / total
+    accuracy50 = (topright1+topright5+topright10+topright20+topright30+topright40+topright50) / total
+
+    return accuracy1,accuracy5,accuracy10,accuracy20,accuracy30,accuracy40,accuracy50
 
 if __name__ == "__main__":
     data_transforms = transforms.Compose([
@@ -103,7 +129,7 @@ if __name__ == "__main__":
             transforms.ToTensor(),
             transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
         ])
-    '''model = torch.load('/home/csc302/bishe/代码/VehicleReID/output-triplet+softmax _final/resnet_nofc_epoch180.pkl')
+    model = torch.load('/media/csc302/KINGSTON/tripsoft2/resnet_nofc_epoch34.pkl')
     model = model.cuda()
     gallery, probe, gdict, pdict = get_galproset('/home/csc302/bishe/dataset/VehicleID_V1.0/train_test_split/test_list_800.txt')
     gallerydict, probedict = getfeature(imgpath='/home/csc302/bishe/dataset/VehicleID_V1.0/test_800/',
@@ -120,12 +146,8 @@ if __name__ == "__main__":
     f4 = open('probedict.txt', 'wb')
     pickle.dump(probedict, f4)
     f4.close()
-    print(gdict)
-    print(pdict)
-    print(gallerydict)
-    print(probedict)'''
 
-    f1 = open('gdict.txt', 'rb')
+    '''f1 = open('gdict.txt', 'rb')
     gdict = pickle.load(f1)
     f1.close()
     f2 = open('pdict.txt', 'rb')
@@ -136,15 +158,11 @@ if __name__ == "__main__":
     f3.close()
     f4 = open('probedict.txt', 'rb')
     probedict = pickle.load(f4)
-    f4.close()
-    acc1 = calacc(gallerydict=gallerydict, probedict=probedict, gdict=gdict,pdict=pdict,toprank=5)
-    acc2 = calacc(gallerydict=gallerydict, probedict=probedict, gdict=gdict, pdict=pdict, toprank=10)
-    acc3 = calacc(gallerydict=gallerydict, probedict=probedict, gdict=gdict, pdict=pdict, toprank=20)
-    acc4 = calacc(gallerydict=gallerydict, probedict=probedict, gdict=gdict, pdict=pdict, toprank=30)
-    acc5 = calacc(gallerydict=gallerydict, probedict=probedict, gdict=gdict, pdict=pdict, toprank=40)
-    acc6 = calacc(gallerydict=gallerydict, probedict=probedict, gdict=gdict, pdict=pdict, toprank=50)
+    f4.close()'''
+    print(calacc(gallerydict=gallerydict,probedict=probedict,gdict=gdict,pdict=pdict))
 
-    print(acc1,acc2,acc3,acc4,acc5,acc6)
+
+
 
 
 

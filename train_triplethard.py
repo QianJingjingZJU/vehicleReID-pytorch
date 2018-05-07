@@ -99,8 +99,8 @@ def train_model(model, criterion1,criterion2,optimizer, scheduler, num_epochs, u
         scheduler.step()
         model.train(True)  # Set model to training mode
         running_loss = 0.0
-        running_corrects = 0
-        running_softmaxloss = 0.0
+        #running_corrects = 0
+        #running_softmaxloss = 0.0
         running_triphardloss = 0.0
 
         for batch in range(batchnumber):
@@ -125,18 +125,18 @@ def train_model(model, criterion1,criterion2,optimizer, scheduler, num_epochs, u
                 feature, outputs = model(inputs)
                 _, preds = torch.max(outputs.data, 1)
                 loss1 = criterion1(outputs, labels)
-                running_softmaxloss += loss1.data[0]
+                #running_softmaxloss += loss1.data[0]
 
                 #feature_p, feature_n = maketrihardbatch(feature)
                 feature = normalize(feature)
                 loss2 = maketrihardbatch(feature, labels, criterion2)
                 running_triphardloss += loss2.data[0]
-                loss = loss1+loss2
+                loss = loss2
                 #embed()
                 loss.backward()
                 optimizer.step()
                 running_loss += loss.data[0]
-                running_corrects += torch.sum(preds==labels.data)
+                #running_corrects += torch.sum(preds==labels.data)
 
 
                 #optimizer.zero_grad()
@@ -150,22 +150,22 @@ def train_model(model, criterion1,criterion2,optimizer, scheduler, num_epochs, u
             # print result every 10 batch
             if (batch+1)%30 == 0:
                 batch_loss = running_loss/(batch+1)
-                batch_softmaxloss = running_softmaxloss/(batch+1)
+               # batch_softmaxloss = running_softmaxloss/(batch+1)
                 batch_triphardloss = running_triphardloss/(batch+1)
-                batch_acc = running_corrects / (4*(batch+1)*batchsize)
-                print('Epoch [{}] Batch [{}] Loss: {:.4f} SoftmaxLoss: {:.4f} TriphardLoss:{:.4f} Accuracy:{:.4f} Time: {:.4f}s'. \
-                        format(epoch, batch+1, batch_loss,batch_softmaxloss, batch_triphardloss, batch_acc, time.time()-begin_time))
+                #batch_acc = running_corrects / (4*(batch+1)*batchsize)
+                print('Epoch [{}] Batch [{}] Loss: {:.4f} TriphardLoss:{:.4f} Time: {:.4f}s'. \
+                        format(epoch, batch+1, batch_loss, batch_triphardloss, time.time()-begin_time))
                 begin_time = time.time()
 
         model_wtse = model.state_dict()
         model_nofce = resnet50_nofc(pretrained=False)
         model_nofce.load_state_dict(remove_fc(model_wtse))
         epoch_loss = running_loss/batchnumber
-        epoch_acc = running_corrects/(4*batchnumber*batchsize)
-        epoch_softmaxloss = running_softmaxloss/batchnumber
+        #epoch_acc = running_corrects/(4*batchnumber*batchsize)
+        #epoch_softmaxloss = running_softmaxloss/batchnumber
         epoch_triphardloss = running_triphardloss/batchnumber
-        print('Loss: {:.4f} SoftmaxLoss: {:.4f} TriphardLoss: {:.4f} Accuracy:{:.4f}'.
-              format(epoch_loss,epoch_softmaxloss,epoch_triphardloss, epoch_acc))
+        print('Loss: {:.4f} TriphardLoss: {:.4f}'.
+              format(epoch_loss,epoch_triphardloss))
 
         if not os.path.exists('output'):
             os.makedirs('output')
@@ -176,8 +176,8 @@ def train_model(model, criterion1,criterion2,optimizer, scheduler, num_epochs, u
                                                 model=model_nofce, gallery=gallery, probe=probe)
             print(calacc(gallerydict=gallerydict,probedict=probedict,gdict=gdict,pdict=pdict))
         writer.add_scalar('epoch_loss', epoch_loss, epoch)
-        writer.add_scalar('epoch_softmax_loss', epoch_softmaxloss, epoch)
-        writer.add_scalar('epoch_triphard_loss', epoch_triphardloss, epoch)
+        #writer.add_scalar('epoch_softmax_loss', epoch_softmaxloss, epoch)
+        #writer.add_scalar('epoch_triphard_loss', epoch_triphardloss, epoch)
 
     time_elapsed = time.time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(
@@ -211,7 +211,7 @@ if __name__ == '__main__':
     dataset_sizes =len(image_datasets)'''
 
     # get model and replace the original fc layer with your fc layer
-    model = torch.load('/home/csc302/bishe/代码/VehicleReID/output-triphard/resnet_nofc_epoch104.pkl')
+    model = resnet50_nofc(pretrained=True)
     model_dict = model.state_dict()
     model_ft =resnet50(pretrained=False)
     num_ftrs = model_ft.fc.in_features
@@ -233,7 +233,7 @@ if __name__ == '__main__':
     optimizer_ft = optim.SGD(model_ft.parameters(), lr=0.01, momentum=0.9)
 
     # Decay LR by a factor of 0.2 every 5 epochs
-    exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=30, gamma=0.1)
+    exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=50, gamma=0.1)
 
     # multi-GPU
     #model_ft = torch.nn.DataParallel(model_ft, device_ids=[0,1])
@@ -244,7 +244,7 @@ if __name__ == '__main__':
                            criterion2=tri_loss,
                            optimizer=optimizer_ft,
                            scheduler=exp_lr_scheduler,
-                           num_epochs=120,
+                           num_epochs=200,
                            use_gpu=use_gpu,
                            batchnumber=batchnumber,
                            batchsize=batch_size)

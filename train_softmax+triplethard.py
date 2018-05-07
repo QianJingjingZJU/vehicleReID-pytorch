@@ -40,29 +40,6 @@ def maketrihardbatch(feature, label, tri_loss):
     loss = tri_loss(dp,dn)
     return loss
 
-    # numpyfeature  = feature.cpu().data.numpy()
-    # pfeature = numpyfeature.copy()
-    # nfeature = numpyfeature.copy()
-    # dim = len(numpyfeature)
-    # dismatrix = [[0 for i in range(dim)] for i in range(dim)]
-    # pname =[]
-    # nname =[]
-    #
-    # for i in range(dim):
-    #     for j in range(dim):
-    #         dismatrix[i][j] = np.linalg.norm(pre.normalize(numpyfeature[i].reshape(1,-1))-pre.normalize(numpyfeature[j].reshape(1,-1)))
-    # for i in range(dim):
-    #     disvec = dismatrix[i]
-    #     a = int(i / 4)
-    #     pname.append(disvec.index(max(disvec[4 * a:4 * a + 4])))
-    #     nlist = disvec[0:4 * a] + disvec[4 * a + 4:len(disvec)]
-    #     nname.append(disvec.index(min(nlist)))
-    # for i in range(dim):
-    #     pfeature[i] = numpyfeature[pname[i]]
-    #     nfeature[i] = numpyfeature[nname[i]]
-    #
-    # return Variable(torch.from_numpy(pfeature).cuda()),Variable(torch.from_numpy(pfeature).cuda())
-
 class Mydatsetsoft(Dataset):
     def __init__(self, img_name, img_id,data_transforms=None, loader = default_loader):
         self.img_name = img_name
@@ -157,9 +134,6 @@ def train_model(model, criterion1,criterion2,optimizer, scheduler, num_epochs, u
                         format(epoch, batch+1, batch_loss,batch_softmaxloss, batch_triphardloss, batch_acc, time.time()-begin_time))
                 begin_time = time.time()
 
-        model_wtse = model.state_dict()
-        model_nofce = resnet50_nofc(pretrained=False)
-        model_nofce.load_state_dict(remove_fc(model_wtse))
         epoch_loss = running_loss/batchnumber
         epoch_acc = running_corrects/(4*batchnumber*batchsize)
         epoch_softmaxloss = running_softmaxloss/batchnumber
@@ -169,11 +143,14 @@ def train_model(model, criterion1,criterion2,optimizer, scheduler, num_epochs, u
 
         if not os.path.exists('output'):
             os.makedirs('output')
-        torch.save(model_nofce, 'output/resnet_nofc_epoch{}.pkl'.format(epoch))
+        torch.save(model, 'output/resnet_epoch{}.pkl'.format(epoch))
         if (epoch+1)%10 ==0:
+            model_wtse = model.state_dict()
+            model_nofce = resnet50_nofc(pretrained=False)
+            model_nofce.load_state_dict(remove_fc(model_wtse))
             gallery, probe, gdict, pdict = get_galproset('/home/csc302/bishe/dataset/VehicleID_V1.0/train_test_split/test_list_800.txt')
             gallerydict, probedict = getfeature(imgpath='/home/csc302/bishe/dataset/VehicleID_V1.0/test_800/',
-                                                model=model_nofce, gallery=gallery, probe=probe)
+                                                model=model_nofce.cuda(), gallery=gallery, probe=probe)
             print(calacc(gallerydict=gallerydict,probedict=probedict,gdict=gdict,pdict=pdict))
         writer.add_scalar('epoch_loss', epoch_loss, epoch)
         writer.add_scalar('epoch_softmax_loss', epoch_softmaxloss, epoch)
@@ -201,24 +178,16 @@ if __name__ == '__main__':
     batchnumber = 600
     num_classes = 5055
     tri_loss = TripletLoss(margin=0.6)
-    '''image_datasets = Mydatset(img_path='/ImagePath',
-                              txt_path=('/TxtFile/' + 'x' + '.txt'),
-                              data_transforms=data_transforms)
-
-    # wrap your data and label into Tensor
-    dataloders = torch.utils.data.DataLoader(image_datasets, batch_size=batch_size, shuffle=True)
-
-    dataset_sizes =len(image_datasets)'''
 
     # get model and replace the original fc layer with your fc layer
-    model = torch.load('/home/csc302/bishe/代码/VehicleReID/output-triphard/resnet_nofc_epoch104.pkl')
-    model_dict = model.state_dict()
-    model_ft =resnet50(pretrained=False)
+    # model = torch.load('/home/csc302/bishe/代码/VehicleReID/output-triphard+softmax104/resnet_nofc_epoch104.pkl')
+    # model_dict = model.state_dict()
+    model_ft =resnet50(pretrained=True)
     num_ftrs = model_ft.fc.in_features
     model_ft.fc = nn.Linear(num_ftrs, num_classes)
-    model_ft_dict = model_ft.state_dict()
-    model_ft_dict.update(model_dict)
-    model_ft.load_state_dict(model_ft_dict)
+    # model_ft_dict = model_ft.state_dict()
+    # model_ft_dict.update(model_dict)
+    # model_ft.load_state_dict(model_ft_dict)
 
 
     # if use gpu
@@ -233,7 +202,7 @@ if __name__ == '__main__':
     optimizer_ft = optim.SGD(model_ft.parameters(), lr=0.01, momentum=0.9)
 
     # Decay LR by a factor of 0.2 every 5 epochs
-    exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=30, gamma=0.1)
+    exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=50, gamma=0.1)
 
     # multi-GPU
     #model_ft = torch.nn.DataParallel(model_ft, device_ids=[0,1])
@@ -244,7 +213,7 @@ if __name__ == '__main__':
                            criterion2=tri_loss,
                            optimizer=optimizer_ft,
                            scheduler=exp_lr_scheduler,
-                           num_epochs=120,
+                           num_epochs=200,
                            use_gpu=use_gpu,
                            batchnumber=batchnumber,
                            batchsize=batch_size)

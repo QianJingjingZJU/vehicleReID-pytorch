@@ -44,6 +44,12 @@ def get_galproset(txtpath):
     return gallery, probe, gdict, pdict
 
 def getfeature(imgpath,model,gallery=[], probe=[]):
+    data_transforms = transforms.Compose([
+        transforms.Scale(256),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    ])
     gallerydict = {}
     probedict = {}
     count =0
@@ -123,12 +129,6 @@ def calacc(gallerydict={}, probedict={},gdict=[],pdict=[]):
     return accuracy1,accuracy5,accuracy10,accuracy20,accuracy30,accuracy40,accuracy50
 
 if __name__ == "__main__":
-    data_transforms = transforms.Compose([
-            transforms.Scale(256),
-            transforms.CenterCrop(224),
-            transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-        ])
     model = torch.load('/media/csc302/KINGSTON/tripsoft2/resnet_nofc_epoch34.pkl')
     model = model.cuda()
     gallery, probe, gdict, pdict = get_galproset('/home/csc302/bishe/dataset/VehicleID_V1.0/train_test_split/test_list_800.txt')

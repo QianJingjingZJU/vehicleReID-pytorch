@@ -1,3 +1,4 @@
+
 from __future__ import print_function, division
 
 import torch
@@ -34,11 +35,15 @@ def normalize(x, axis=-1):
     x = 1. * x / (torch.norm(x, 2, axis, keepdim=True).expand_as(x) + 1e-12)
     return x
 
-def calquadloss(feature,tri_loss,batchsize):
-    dp = torch.norm(feature[0:batchsize:1]-feature[batchsize:2*batchsize:1])
-    dn1 = torch.norm(feature[0:batchsize:1]-feature[2*batchsize:3*batchsize:1])
-    dn = torch.norm(feature[2*batchsize:3*batchsize:1]-feature[3*batchsize:4*batchsize:1])
-    loss = tri_loss(dp,dn1) + tri_loss(dp,dn)
+def calquadloss(feature,tri_loss1,tri_loss2,batchsize):
+    def mynorm(delta):
+        dist = torch.pow(delta,2).sum(1, keepdim=True)
+        dist = dist.clamp(min=1e-12).sqrt()
+        return dist
+    dp = mynorm(feature[0:batchsize:1]-feature[batchsize:2*batchsize:1])
+    dn1 = mynorm(feature[0:batchsize:1]-feature[2*batchsize:3*batchsize:1])
+    dn = mynorm(feature[2*batchsize:3*batchsize:1]-feature[3*batchsize:4*batchsize:1])
+    loss = tri_loss1(dp,dn1) + tri_loss2(dp,dn)
     return loss
 
 class Mydatsetsoft(Dataset):
@@ -63,7 +68,7 @@ class Mydatsetsoft(Dataset):
                 print("Cannot transform image: {}".format(img))
         return img, img_id
 
-def train_model(model, criterion1,criterion2,optimizer, scheduler, num_epochs, use_gpu, batchnumber=50, batchsize=32):
+def train_model(model,criterion1,criterion2,criterion3,optimizer, scheduler, num_epochs, use_gpu, batchnumber=50, batchsize=32):
     since = time.time()
     writer = SummaryWriter()
     d = get_imgiddic('/home/csc302/bishe/dataset/VehicleID_V1.0/train_50000.txt')
@@ -107,7 +112,7 @@ def train_model(model, criterion1,criterion2,optimizer, scheduler, num_epochs, u
 
                 #feature_p, feature_n = maketrihardbatch(feature)
                 feature = normalize(feature)
-                loss2 = calquadloss(feature,criterion2, batchsize)
+                loss2 = calquadloss(feature,criterion2,criterion3,batchsize)
                 running_quadloss += loss2.data[0]
                 loss = loss1+loss2
                 #embed()
@@ -135,9 +140,6 @@ def train_model(model, criterion1,criterion2,optimizer, scheduler, num_epochs, u
                         format(epoch, batch+1, batch_loss,batch_softmaxloss, batch_quadloss, batch_acc, time.time()-begin_time))
                 begin_time = time.time()
 
-        model_wtse = model.state_dict()
-        model_nofce = resnet50_nofc(pretrained=False)
-        model_nofce.load_state_dict(remove_fc(model_wtse))
         epoch_loss = running_loss/batchnumber
         epoch_acc = running_corrects/(batchnumber*batchsize*4)
         epoch_softmaxloss = running_softmaxloss/batchnumber
@@ -147,13 +149,15 @@ def train_model(model, criterion1,criterion2,optimizer, scheduler, num_epochs, u
 
         if not os.path.exists('output'):
             os.makedirs('output')
-        torch.save(model_nofce, 'output/resnet_nofc_epoch{}.pkl'.format(epoch))
-        if (epoch+1)%10==0:
-            gallery, probe, gdict, pdict = get_galproset(
-                '/home/csc302/bishe/dataset/VehicleID_V1.0/train_test_split/test_list_800.txt')
+        torch.save(model, 'output/resnet_epoch{}.pkl'.format(epoch))
+        if (epoch+1)%10 ==0:
+            model_wtse = model.state_dict()
+            model_nofce = resnet50_nofc(pretrained=False)
+            model_nofce.load_state_dict(remove_fc(model_wtse))
+            gallery, probe, gdict, pdict = get_galproset('/home/csc302/bishe/dataset/VehicleID_V1.0/train_test_split/test_list_800.txt')
             gallerydict, probedict = getfeature(imgpath='/home/csc302/bishe/dataset/VehicleID_V1.0/test_800/',
-                                                model=model, gallery=gallery, probe=probe)
-            print(calacc(gallerydict=gallerydict, probedict=probedict, gdict=gdict, pdict=pdict))
+                                                model=model_nofce.cuda(), gallery=gallery, probe=probe)
+            print(calacc(gallerydict=gallerydict,probedict=probedict,gdict=gdict,pdict=pdict))
         writer.add_scalar('epoch_loss', epoch_loss, epoch)
         writer.add_scalar('epoch_softmax_loss', epoch_softmaxloss, epoch)
         writer.add_scalar('epoch_triphard_loss', epoch_quadloss, epoch)
@@ -179,25 +183,24 @@ if __name__ == '__main__':
     batch_size = 32
     batchnumber = 600
     num_classes = 5055
-    tri_loss = TripletLoss(margin=0.6)
+    tri_loss1 = TripletLoss(margin=0.6)
+    tri_loss2 = TripletLoss(margin=0.3)
     '''image_datasets = Mydatset(img_path='/ImagePath',
                               txt_path=('/TxtFile/' + 'x' + '.txt'),
                               data_transforms=data_transforms)
-
     # wrap your data and label into Tensor
     dataloders = torch.utils.data.DataLoader(image_datasets, batch_size=batch_size, shuffle=True)
-
     dataset_sizes =len(image_datasets)'''
 
     # get model and replace the original fc layer with your fc layer
-    model = resnet50_nofc(pretrained=True)
-    model_dict = model.state_dict()
-    model_ft =resnet50(pretrained=False)
+    # model = resnet50_nofc_pre(pretrained=True)
+    # model_dict = model.state_dict()
+    model_ft = resnet50(pretrained=True)
     num_ftrs = model_ft.fc.in_features
     model_ft.fc = nn.Linear(num_ftrs, num_classes)
-    model_ft_dict = model_ft.state_dict()
-    model_ft_dict.update(model_dict)
-    model_ft.load_state_dict(model_ft_dict)
+    # model_ft_dict = model_ft.state_dict()
+    # model_ft_dict.update(model_dict)
+    # model_ft.load_state_dict(model_ft_dict)
 
 
     # if use gpu
@@ -209,7 +212,7 @@ if __name__ == '__main__':
     #criterion2 = nn.TripletMarginLoss(margin=0.6)
 
     # Observe that all parameters are being optimized
-    optimizer_ft = optim.SGD(model_ft.parameters(), lr=0.005, momentum=0.9)
+    optimizer_ft = optim.SGD(model_ft.parameters(), lr=0.01, momentum=0.9)
 
     # Decay LR by a factor of 0.2 every 5 epochs
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=50, gamma=0.1)
@@ -220,7 +223,8 @@ if __name__ == '__main__':
     # train model
     model_ft = train_model(model=model_ft,
                            criterion1=criterion1,
-                           criterion2=tri_loss,
+                           criterion2=tri_loss1,
+                           criterion3=tri_loss2,
                            optimizer=optimizer_ft,
                            scheduler=exp_lr_scheduler,
                            num_epochs=200,

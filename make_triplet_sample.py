@@ -156,9 +156,9 @@ def getquandrasample(imgpath,batchsize=32,imgiddic={}, imgsortid={}):
 
 
 
-imgiddic = get_imgiddic('/Users/CarolQian/Documents/bishe/VehicleID_V1.0/train_test_split/test_list_800.txt')
-imgsortid = get_img_sortiddic('/Users/CarolQian/Documents/bishe/VehicleID_V1.0/train_test_split/test_list_800.txt')
-img,imgid = getquandrasample(imgpath='/Users/CarolQian/Documents/bishe/VehicleID_V1.0/test_800/',
-                             batchsize=4,imgiddic=imgiddic,imgsortid=imgsortid)
-print(len(img),img)
-print(len(imgid),imgid)
+# imgiddic = get_imgiddic('/Users/CarolQian/Documents/bishe/VehicleID_V1.0/train_test_split/test_list_800.txt')
+# imgsortid = get_img_sortiddic('/Users/CarolQian/Documents/bishe/VehicleID_V1.0/train_test_split/test_list_800.txt')
+# img,imgid = getquandrasample(imgpath='/Users/CarolQian/Documents/bishe/VehicleID_V1.0/test_800/',
+#                              batchsize=4,imgiddic=imgiddic,imgsortid=imgsortid)
+# print(len(img),img)
+# print(len(imgid),imgid)

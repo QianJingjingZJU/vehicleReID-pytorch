@@ -71,18 +71,15 @@ def getfeature(imgpath,model,gallery=[], probe=[]):
 
 def calacc(gallerydict={}, probedict={},gdict=[],pdict=[],toprank=10):
     total = len(pdict)
-    print(gdict)
-    print(pdict)
     topright = 0
 
     for i in probedict:
         probeid = pdict[i]
         thegallery = gallerydict.copy()
         for j in thegallery:
+            embed()
             thegallery[j] = np.linalg.norm(pre.normalize(probedict[i])-pre.normalize(thegallery[j]))
-        print(thegallery)
         sortgallery = sorted(thegallery.items(), key=lambda x: x[1])
-        print(sortgallery)
         sortimgnum = []
         for i in sortgallery:
             sortimgnum.append(i[0])
@@ -94,8 +91,7 @@ def calacc(gallerydict={}, probedict={},gdict=[],pdict=[],toprank=10):
             if sortimgnum[rank] == probeid:
                 topright = topright+1
                 break
-        print(topright)
-        embed()
+        #print(topright)
     accuracy = topright/total
 
     return accuracy
@@ -107,7 +103,7 @@ if __name__ == "__main__":
             transforms.ToTensor(),
             transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
         ])
-    '''model = torch.load('/home/csc302/bishe/代码/VehicleReID/output-Triplet-final/resnet_epoch180.pkl')
+    '''model = torch.load('/home/csc302/bishe/代码/VehicleReID/output-triplet+softmax _final/resnet_nofc_epoch180.pkl')
     model = model.cuda()
     gallery, probe, gdict, pdict = get_galproset('/home/csc302/bishe/dataset/VehicleID_V1.0/train_test_split/test_list_800.txt')
     gallerydict, probedict = getfeature(imgpath='/home/csc302/bishe/dataset/VehicleID_V1.0/test_800/',
@@ -141,9 +137,14 @@ if __name__ == "__main__":
     f4 = open('probedict.txt', 'rb')
     probedict = pickle.load(f4)
     f4.close()
-    acc = calacc(gallerydict=gallerydict, probedict=probedict, gdict=gdict,pdict=pdict,toprank=50)
+    acc1 = calacc(gallerydict=gallerydict, probedict=probedict, gdict=gdict,pdict=pdict,toprank=5)
+    acc2 = calacc(gallerydict=gallerydict, probedict=probedict, gdict=gdict, pdict=pdict, toprank=10)
+    acc3 = calacc(gallerydict=gallerydict, probedict=probedict, gdict=gdict, pdict=pdict, toprank=20)
+    acc4 = calacc(gallerydict=gallerydict, probedict=probedict, gdict=gdict, pdict=pdict, toprank=30)
+    acc5 = calacc(gallerydict=gallerydict, probedict=probedict, gdict=gdict, pdict=pdict, toprank=40)
+    acc6 = calacc(gallerydict=gallerydict, probedict=probedict, gdict=gdict, pdict=pdict, toprank=50)
 
-    print(acc)
+    print(acc1,acc2,acc3,acc4,acc5,acc6)
 
 
 

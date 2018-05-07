@@ -1,6 +1,7 @@
 import os
 import shutil
 import random
+import numpy as np
 
 def sortid(train_id):
     train_sortid = list(set(train_id))
@@ -99,10 +100,11 @@ def gettriphardsample(imgpath,batchsize=32,imgiddic={},imgsortid={}):
     img = []
     id = []
     vehicleid = list(imgiddic.keys())
+    batchid = vehicleid.copy()
 
     for batch in range(batchsize):
-        batchid = vehicleid.copy()
         anchorid = random.choice(batchid)
+        batchid.remove(anchorid)
         if len(imgiddic[anchorid]) > 3:
             ap = random.sample(imgiddic[anchorid],4)
             for i in range(4):

@@ -30,6 +30,7 @@ def euclidean_dist(x, y):
   return dist
 
 
+<<<<<<< HEAD
 def batch_euclidean_dist(x, y):
   """
   Args:
@@ -128,6 +129,8 @@ def batch_local_dist(x, y):
   return dist
 
 
+=======
+>>>>>>> 931612e6963d3889ccbf140f086840aa437e8caf
 def hard_example_mining(dist_mat, labels, return_inds=False):
   """For each anchor, find the hardest positive and negative sample.
   Args:
@@ -154,9 +157,14 @@ def hard_example_mining(dist_mat, labels, return_inds=False):
   is_neg = labels.expand(N, N).ne(labels.expand(N, N).t())
 
   # `dist_ap` means distance(anchor, positive)
+<<<<<<< HEAD
   # both `dist_ap` and `relative_p_inds` with shape [N, 1]
   dist_ap, relative_p_inds = torch.max(
     dist_mat[is_pos].contiguous().view(N, -1), 1, keepdim=True)
+=======
+  # both `dist_ap` and `relative_p_inds` with shape
+  dist_ap, relative_p_inds = torch.max(dist_mat[is_pos].contiguous().view(N, -1), 1, keepdim=True)
+>>>>>>> 931612e6963d3889ccbf140f086840aa437e8caf
   # `dist_an` means distance(anchor, negative)
   # both `dist_an` and `relative_n_inds` with shape [N, 1]
   dist_an, relative_n_inds = torch.min(
@@ -197,6 +205,7 @@ def global_loss(tri_loss, global_feat, labels, normalize_feature=True):
       indices of selected hard positive samples; 0 <= p_inds[i] <= N - 1
     n_inds: pytorch LongTensor, with shape [N];
       indices of selected hard negative samples; 0 <= n_inds[i] <= N - 1
+<<<<<<< HEAD
     =============
     For Debugging
     =============
@@ -205,6 +214,13 @@ def global_loss(tri_loss, global_feat, labels, normalize_feature=True):
     ===================
     For Mutual Learning
     ===================
+=======
+    ==================
+    For Debugging, etc
+    ==================
+    dist_ap: pytorch Variable, distance(anchor, positive); shape [N]
+    dist_an: pytorch Variable, distance(anchor, negative); shape [N]
+>>>>>>> 931612e6963d3889ccbf140f086840aa437e8caf
     dist_mat: pytorch Variable, pairwise euclidean distance; shape [N, N]
   """
   if normalize_feature:
@@ -215,6 +231,7 @@ def global_loss(tri_loss, global_feat, labels, normalize_feature=True):
     dist_mat, labels, return_inds=True)
   loss = tri_loss(dist_ap, dist_an)
   return loss, p_inds, n_inds, dist_ap, dist_an, dist_mat
+<<<<<<< HEAD
 
 
 def local_loss(
@@ -264,3 +281,5 @@ def local_loss(
     dist_an = batch_local_dist(local_feat, local_feat[n_inds])
     loss = tri_loss(dist_ap, dist_an)
     return loss, dist_ap, dist_an
+=======
+>>>>>>> 931612e6963d3889ccbf140f086840aa437e8caf

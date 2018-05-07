@@ -2,9 +2,9 @@ import os
 import shutil
 from random import choice
 
-os.chdir('/Users/CarolQian/Documents/bishe/VehicleID_V1.0/train_test_split/')
+os.chdir('/home/csc302/bishe/dataset/VehicleID_V1.0/train_test_split/')
 
-f = open("train_50000.txt")
+f = open("test_list_800.txt")
 line = f.readline()                 # 调用文件的 readline()方法
 count = 1
 d = {}
@@ -22,8 +22,8 @@ while line:
 f.close()
 print(count, len(d))
 
-pathA = '/Users/CarolQian/Documents/bishe/VehicleID_V1.0/image/'
-pathB = '/Users/CarolQian/Documents/bishe/VehicleID_V1.0/train_50000/'
+pathA = '/home/csc302/bishe/dataset/VehicleID_V1.0/image/'
+pathB = '/home/csc302/bishe/dataset/VehicleID_V1.0/test_800/'
 shutil.rmtree(pathB)
 os.mkdir(pathB)
 oldname = os.listdir(pathA)

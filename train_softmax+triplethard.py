@@ -18,6 +18,8 @@ from sklearn import preprocessing as pre
 from IPython import embed
 from tensorboardX import SummaryWriter
 from make_triplet_sample import get_imgiddic,get_img_sortiddic,gettriphardsample
+from loss import hard_example_mining, euclidean_dist
+from TripletLoss import TripletLoss
 
 # use PIL Image to read image
 def default_loader(path):
@@ -31,29 +33,34 @@ def normalize(x, axis=-1):
     x = 1. * x / (torch.norm(x, 2, axis, keepdim=True).expand_as(x) + 1e-12)
     return x
 
-def maketrihardbatch(feature):
-    pfeature = feature
-    nfeature = feature
-    numpyfeature  = feature.data.numpy()
-    dim = len(numpyfeature)
-    dismatrix = [[0 for i in range(dim)] for i in range(dim)]
-    pname =[]
-    nname =[]
+def maketrihardbatch(feature, label, tri_loss):
+    disMatrix = euclidean_dist(feature, feature)
+    dp, dn = hard_example_mining(disMatrix, label)
+    loss = tri_loss(dp,dn)
+    return loss
 
-    for i in range(dim):
-        for j in range(dim):
-            dismatrix[i][j] = np.linalg.norm(pre.normalize(numpyfeature[i])-pre.normalize(numpyfeature[j]))
-    for i in range(dim):
-        disvec = dismatrix[i]
-        a = int(i / 4)
-        pname.append(disvec.index(max(disvec[4 * a:4 * a + 4])))
-        nlist = disvec[0:4 * a] + disvec[4 * a + 4:len(disvec)]
-        nname.append(disvec.index(min(nlist)))
-    for i in range(dim):
-        pfeature[i] = feature[pname[i]]
-        nfeature[i] = feature[nname[i]]
-
-    return pfeature, nfeature
+    # numpyfeature  = feature.cpu().data.numpy()
+    # pfeature = numpyfeature.copy()
+    # nfeature = numpyfeature.copy()
+    # dim = len(numpyfeature)
+    # dismatrix = [[0 for i in range(dim)] for i in range(dim)]
+    # pname =[]
+    # nname =[]
+    #
+    # for i in range(dim):
+    #     for j in range(dim):
+    #         dismatrix[i][j] = np.linalg.norm(pre.normalize(numpyfeature[i].reshape(1,-1))-pre.normalize(numpyfeature[j].reshape(1,-1)))
+    # for i in range(dim):
+    #     disvec = dismatrix[i]
+    #     a = int(i / 4)
+    #     pname.append(disvec.index(max(disvec[4 * a:4 * a + 4])))
+    #     nlist = disvec[0:4 * a] + disvec[4 * a + 4:len(disvec)]
+    #     nname.append(disvec.index(min(nlist)))
+    # for i in range(dim):
+    #     pfeature[i] = numpyfeature[pname[i]]
+    #     nfeature[i] = numpyfeature[nname[i]]
+    #
+    # return Variable(torch.from_numpy(pfeature).cuda()),Variable(torch.from_numpy(pfeature).cuda())
 
 class Mydatsetsoft(Dataset):
     def __init__(self, img_name, img_id,data_transforms=None, loader = default_loader):
@@ -118,10 +125,15 @@ def train_model(model, criterion1,criterion2,optimizer, scheduler, num_epochs, u
                 loss1 = criterion1(outputs, labels)
                 running_softmaxloss += loss1.data[0]
 
-                feature_p, feature_n = maketrihardbatch(feature)
-                loss2 = criterion2(feature, feature_p, feature_n)
+                #feature_p, feature_n = maketrihardbatch(feature)
+                feature = normalize(feature)
+                try:
+                    loss2 = maketrihardbatch(feature, labels, criterion2)
+                except Exception as e:
+                    embed()
                 running_triphardloss += loss2.data[0]
                 loss = loss1+loss2
+                #embed()
                 loss.backward()
                 optimizer.step()
                 running_loss += loss.data[0]
@@ -181,7 +193,7 @@ if __name__ == '__main__':
     batch_size = 32
     batchnumber = 600
     num_classes = 5055
-
+    tri_loss = TripletLoss(margin=0.6)
     '''image_datasets = Mydatset(img_path='/ImagePath',
                               txt_path=('/TxtFile/' + 'x' + '.txt'),
                               data_transforms=data_transforms)
@@ -216,7 +228,7 @@ if __name__ == '__main__':
     # train model
     model_ft = train_model(model=model_ft,
                            criterion1=criterion1,
-                           criterion2=criterion2,
+                           criterion2=tri_loss,
                            optimizer=optimizer_ft,
                            scheduler=exp_lr_scheduler,
                            num_epochs=200,

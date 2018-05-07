@@ -20,6 +20,7 @@ from tensorboardX import SummaryWriter
 from make_triplet_sample import get_imgiddic,get_img_sortiddic,getquandrasample
 from loss import hard_example_mining, euclidean_dist
 from TripletLoss import TripletLoss
+from test_CMC import get_galproset,getfeature,calacc
 
 # use PIL Image to read image
 def default_loader(path):
@@ -33,7 +34,7 @@ def normalize(x, axis=-1):
     x = 1. * x / (torch.norm(x, 2, axis, keepdim=True).expand_as(x) + 1e-12)
     return x
 
-def calquadloss(feature, label, tri_loss,batchsize):
+def calquadloss(feature,tri_loss,batchsize):
     dp = torch.norm(feature[0:batchsize:1]-feature[batchsize:2*batchsize:1])
     dn1 = torch.norm(feature[0:batchsize:1]-feature[2*batchsize:3*batchsize:1])
     dn = torch.norm(feature[2*batchsize:3*batchsize:1]-feature[3*batchsize:4*batchsize:1])
@@ -103,12 +104,11 @@ def train_model(model, criterion1,criterion2,optimizer, scheduler, num_epochs, u
                 _, preds = torch.max(outputs.data, 1)
                 loss1 = criterion1(outputs, labels)
                 running_softmaxloss += loss1.data[0]
-                running_corrects += torch.sum(preds==labels.data)
 
                 #feature_p, feature_n = maketrihardbatch(feature)
                 feature = normalize(feature)
-                loss2 = calquadloss(feature, labels, criterion2,batchsize)
-                running_triphardloss += loss2.data[0]
+                loss2 = calquadloss(feature,criterion2, batchsize)
+                running_quadloss += loss2.data[0]
                 loss = loss1+loss2
                 #embed()
                 loss.backward()
@@ -129,28 +129,34 @@ def train_model(model, criterion1,criterion2,optimizer, scheduler, num_epochs, u
             if (batch+1)%30 == 0:
                 batch_loss = running_loss/(batch+1)
                 batch_softmaxloss = running_softmaxloss/(batch+1)
-                batch_triphardloss = running_triphardloss/(batch+1)
-                batch_acc = running_corrects / ((batch+1)*batchsize)
-                print('Epoch [{}] Batch [{}] Loss: {:.4f} SoftmaxLoss: {:.4f} TriphardLoss:{:.4f} Accuracy:{:.4f} Time: {:.4f}s'. \
-                        format(epoch, batch+1, batch_loss,batch_softmaxloss, batch_triphardloss, batch_acc, time.time()-begin_time))
+                batch_quadloss = running_quadloss/(batch+1)
+                batch_acc = running_corrects / ((batch+1)*batchsize*4)
+                print('Epoch [{}] Batch [{}] Loss: {:.4f} SoftmaxLoss: {:.4f} QuadrupletLoss:{:.4f} Accuracy:{:.4f} Time: {:.4f}s'. \
+                        format(epoch, batch+1, batch_loss,batch_softmaxloss, batch_quadloss, batch_acc, time.time()-begin_time))
                 begin_time = time.time()
 
         model_wtse = model.state_dict()
         model_nofce = resnet50_nofc(pretrained=False)
-        model_nofce.load_state_dict(remove_fcandbn(model_wtse))
+        model_nofce.load_state_dict(remove_fc(model_wtse))
         epoch_loss = running_loss/batchnumber
-        epoch_acc = running_corrects/(batchnumber*batchsize)
+        epoch_acc = running_corrects/(batchnumber*batchsize*4)
         epoch_softmaxloss = running_softmaxloss/batchnumber
-        epoch_triphardloss = running_triphardloss/batchnumber
-        print('Loss: {:.4f} SoftmaxLoss: {:.4f} TriphardLoss: {:.4f} Accuracy:{:.4f}'.
-              format(epoch_loss,epoch_softmaxloss,epoch_triphardloss, epoch_acc))
+        epoch_quadloss = running_quadloss/batchnumber
+        print('Loss: {:.4f} SoftmaxLoss: {:.4f} QuandrupletLoss: {:.4f} Accuracy:{:.4f}'.
+              format(epoch_loss,epoch_softmaxloss,epoch_quadloss, epoch_acc))
 
         if not os.path.exists('output'):
             os.makedirs('output')
         torch.save(model_nofce, 'output/resnet_nofc_epoch{}.pkl'.format(epoch))
+        if (epoch+1)%10==0:
+            gallery, probe, gdict, pdict = get_galproset(
+                '/home/csc302/bishe/dataset/VehicleID_V1.0/train_test_split/test_list_800.txt')
+            gallerydict, probedict = getfeature(imgpath='/home/csc302/bishe/dataset/VehicleID_V1.0/test_800/',
+                                                model=model, gallery=gallery, probe=probe)
+            print(calacc(gallerydict=gallerydict, probedict=probedict, gdict=gdict, pdict=pdict))
         writer.add_scalar('epoch_loss', epoch_loss, epoch)
         writer.add_scalar('epoch_softmax_loss', epoch_softmaxloss, epoch)
-        writer.add_scalar('epoch_triphard_loss', epoch_triphardloss, epoch)
+        writer.add_scalar('epoch_triphard_loss', epoch_quadloss, epoch)
 
     time_elapsed = time.time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(
